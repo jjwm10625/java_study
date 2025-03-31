@@ -2,9 +2,22 @@ package lab2;// AST.java
 // AST for S
 import java.util.*;
 
+class Indent {
+    public static void display(int level, String s) {
+        StringBuilder tab = new StringBuilder();
+
+        for (int i = 0; i < level * 8; i++) {
+            tab.append(" ");
+        }
+
+        System.out.println(tab.toString() + s);
+    }
+}
+
 abstract class Command {
     // Command = Decl | Function | Stmt
     Type type =Type.UNDEF;
+    public void display(int l) {}
 }
 
 class Decls extends ArrayList<Decl> {
@@ -12,28 +25,40 @@ class Decls extends ArrayList<Decl> {
 
     Decls() { super(); };
     Decls(Decl d) {
-	    this.add(d);
+        this.add(d);
     }
 }
 
 class Decl extends Command {
-    // Decl = Type type; Identifier id 
+    // Decl = Type type; Identifier id; Value expr;
     Identifier id;
     Expr expr = null;
     int arraysize = 0;
 
-    Decl (String s, Type t) {
+    Decl(String s, Type t) {
         id = new Identifier(s); type = t;
-    } // declaration 
+    } // declaration
 
-    Decl (String s, Type t, int n) {
-        id = new Identifier(s); type = t; arraysize = n;
-    } // array declaration 
+    Decl(String s, Type t, int n) {
+        id = new Identifier(s); type = t;
+        arraysize = n;
+    } // array declaration
 
-    Decl (String s, Type t, Expr e) {
+    Decl(String s, Type t, Expr e) {
         id = new Identifier(s); type = t; expr = e;
-    } // declaration 
+    } // declaration
+
+    @Override
+    public void display(int level) {
+        Indent.display(level, "Decl");
+        Indent.display(level + 1, "Type: " + type.toString());
+        id.display(level + 1);
+        if (expr != null) {
+            expr.display(level + 1);
+        }
+    }
 }
+
 
 class Functions extends ArrayList<Function> {
     // Functions = Function*
@@ -44,13 +69,27 @@ class Function extends Command  {
     Identifier id;
     Decls params;
     Stmt stmt;
-   
-    Function(String s, Type t) { 
+
+    Function(String s, Type t) {
         id = new Identifier(s); type = t; params = null; stmt = null;
     }
 
-    public String toString ( ) { 
-       return id.toString()+params.toString(); 
+    @Override
+    public void display(int level) {
+        Indent.display(level, "Function");
+        id.display(level + 1); // 함수 이름 출력
+        if (params != null) {
+            Indent.display(level + 1, "Params:");
+            for (Decl param : params) {
+                param.display(level + 2); // 각 파라미터 출력
+            }
+        }
+        stmt.display(level + 1); // 함수 본문 출력
+    }
+
+    @Override
+    public String toString() {
+        return id.toString() + params.toString();
     }
 }
 
@@ -66,25 +105,26 @@ class Type {
     final static Type RAISEDEXC = new Type("raisedexc");
     final static Type UNDEF = new Type("undef");
     final static Type ERROR = new Type("error");
-    
+
     protected String id;
     protected Type(String s) { id = s; }
     public String toString ( ) { return id; }
 }
 
 class ProtoType extends Type {
-   // defines the type of a function and its parameters
-   Type result;  
-   Decls params;
-   ProtoType (Type t, Decls ds) {
-      super(t.id);
-      result = t;
-      params = ds;
-   }
+    // defines the type of a function and its parameters
+    Type result;
+    Decls params;
+    ProtoType (Type t, Decls ds) {
+        super(t.id);
+        result = t;
+        params = ds;
+    }
 }
 
 abstract class Stmt extends Command {
     // Stmt = Empty | Stmts | Assignment | If  | While | Let | Read | Print
+
 }
 
 class Empty extends Stmt {
@@ -94,20 +134,27 @@ class Empty extends Stmt {
 class Stmts extends Stmt {
     // Stmts = Stmt*
     public ArrayList<Stmt> stmts = new ArrayList<Stmt>();
-    
+
     Stmts() {
-	    super(); 
+        super();
     }
 
     Stmts(Stmt s) {
-	     stmts.add(s);
+        stmts.add(s);
+    }
+
+    @Override
+    public void display(int level) {
+        for (Stmt stmt : stmts) {
+            stmt.display(level);  // 각 문장 출력
+        }
     }
 }
 
 class Assignment extends Stmt {
     // Assignment = Identifier id; Expr expr
     Identifier id;
-    Array ar = null;
+    //Array ar = null;
     Expr expr;
 
     Assignment (Identifier t, Expr e) {
@@ -115,9 +162,10 @@ class Assignment extends Stmt {
         expr = e;
     }
 
-    Assignment (Array a, Expr e) {
-        ar = a;
-        expr = e;
+    public void display(int level) {
+        Indent.display(level, "Assignment");
+        id.display(level+1);
+        expr.display(level+1);
     }
 }
 
@@ -125,13 +173,13 @@ class If extends Stmt {
     // If = Expr expr; Stmt stmt1, stmt2;
     Expr expr;
     Stmt stmt1, stmt2;
-    
+
     If (Expr t, Stmt tp) {
         expr = t; stmt1 = tp; stmt2 = new Empty( );
     }
-    
+
     If (Expr t, Stmt tp, Stmt ep) {
-        expr = t; stmt1 = tp; stmt2 = ep; 
+        expr = t; stmt1 = tp; stmt2 = ep;
     }
 }
 
@@ -143,6 +191,13 @@ class While extends Stmt {
     While (Expr t, Stmt b) {
         expr = t; stmt = b;
     }
+
+    @Override
+    public void display(int level) {
+        Indent.display(level, "While");
+        expr.display(level + 1);
+        stmt.display(level + 1);
+    }
 }
 
 class Let extends Stmt {
@@ -153,16 +208,28 @@ class Let extends Stmt {
 
     Let(Decls ds, Stmts ss) {
         decls = ds;
-		funs = null;
+        funs = null;
         stmts = ss;
     }
 
     Let(Decls ds, Functions fs, Stmts ss) {
         decls = ds;
-	    funs = fs;
+        funs = fs;
         stmts = ss;
     }
+
+    @Override
+    public void display(int level) {
+        Indent.display(level, "Let");
+        Indent.display(level + 1, "Decls");
+        for (Decl d : decls) {
+            d.display(level + 2);
+        }
+        Indent.display(level + 1, "Stmts");
+        stmts.display(level + 2);
+    }
 }
+
 
 class Read extends Stmt {
     // Read = Identifier id
@@ -171,14 +238,25 @@ class Read extends Stmt {
     Read (Identifier v) {
         id = v;
     }
+
+    @Override
+    public void display(int level) {
+        Indent.display(level, "Read");
+        id.display(level + 1);
+    }
 }
 
 class Print extends Stmt {
-    // Print =  Expr expr
     Expr expr;
 
-    Print (Expr e) {
+    Print(Expr e) {
         expr = e;
+    }
+
+    @Override
+    public void display(int level) {
+        Indent.display(level, "Print");
+        expr.display(level + 1);  // 표현식 출력
     }
 }
 
@@ -190,16 +268,23 @@ class Return extends Stmt {
         fid = new Identifier(s);
         expr = e;
     }
+
+    @Override
+    public void display(int level) {
+        Indent.display(level, "Return");
+        fid.display(level + 1); // 함수 이름 출력
+        expr.display(level + 1); // 반환할 표현식 출력
+    }
 }
 
 class Try extends Stmt {
-    // Try = Identifier id; Stmt stmt1; Stmt stmt2; 
+    // Try = Identifier id; Stmt stmt1; Stmt stmt2;
     Identifier eid;
-    Stmt stmt1; 
-    Stmt stmt2; 
+    Stmt stmt1;
+    Stmt stmt2;
 
     Try(Identifier id, Stmt s1, Stmt s2) {
-        eid = id; 
+        eid = id;
         stmt1 = s1;
         stmt2 = s2;
     }
@@ -219,16 +304,15 @@ class Exprs extends ArrayList<Expr> {
 
 abstract class Expr extends Stmt {
     // Expr = Identifier | Value | Binary | Unary | Call
-
 }
 
-class Call extends Expr { 
-    Identifier fid;  
+class Call extends Expr {
+    Identifier fid;
     Exprs args;
 
     Call(Identifier id, Exprs a) {
-       fid = id;
-       args = a;
+        fid = id;
+        args = a;
     }
 }
 
@@ -236,13 +320,22 @@ class Identifier extends Expr {
     // Identifier = String id
     private String id;
 
-    Identifier(String s) { id = s; }
+    Identifier(String s) {
+        id = s;
+    }
 
-    public String toString( ) { return id; }
-    
-    public boolean equals (Object obj) {
+    public String toString() {
+        return id;
+    }
+
+    public boolean equals(Object obj) {
         String s = ((Identifier) obj).id;
         return id.equals(s);
+    }
+
+    @Override
+    public void display(int level) {
+        Indent.display(level, "Identifier: " + id);
     }
 }
 
@@ -254,7 +347,7 @@ class Array extends Expr {
     Array(Identifier s, Expr e) {id = s; expr = e;}
 
     public String toString( ) { return id.toString(); }
-    
+
     public boolean equals (Object obj) {
         String s = ((Array) obj).id.toString();
         return id.equals(s);
@@ -262,66 +355,80 @@ class Array extends Expr {
 }
 
 class Value extends Expr {
-    // Value = int | bool | string | array | function 
+    // Value = int | bool | string | array | function
     protected boolean undef = true;
-    Object value = null; // Type type;
-    
+    Object value = null;
+    Type type;
+
     Value(Type t) {
-        type = t;  
-        if (type == Type.INT) value = new Integer(0);
-        if (type == Type.BOOL) value = new Boolean(false);
+        type = t;
+        if (type == Type.INT) value = Integer.valueOf(0);
+        if (type == Type.BOOL) value = Boolean.valueOf(false);
         if (type == Type.STRING) value = "";
         undef = false;
     }
 
+    // 객체를 기반으로 초기화
     Value(Object v) {
         if (v instanceof Integer) type = Type.INT;
         if (v instanceof Boolean) type = Type.BOOL;
         if (v instanceof String) type = Type.STRING;
         if (v instanceof Function) type = Type.FUN;
         if (v instanceof Value[]) type = Type.ARRAY;
-        value = v; undef = false; 
+        value = v; undef = false;
     }
 
+    // 값 반환
     Object value() { return value; }
 
-    int intValue( ) { 
-        if (value instanceof Integer) 
-            return ((Integer) value).intValue(); 
+    // 값 출력 메소드
+    @Override
+    public void display(int level) {
+        Indent.display(level, "Value: " + value);
+    }
+
+    // int 값 반환
+    int intValue() {
+        if (value instanceof Integer)
+            return ((Integer) value).intValue();
         else return 0;
     }
-    
-    boolean boolValue( ) { 
-        if (value instanceof Boolean) 
-            return ((Boolean) value).booleanValue(); 
-        else return false;
-    } 
 
-    String stringValue ( ) {
-        if (value instanceof String) 
-            return (String) value; 
+    // boolean 값 반환
+    boolean boolValue() {
+        if (value instanceof Boolean)
+            return ((Boolean) value).booleanValue();
+        else return false;
+    }
+
+    // String 값 반환
+    String stringValue() {
+        if (value instanceof String)
+            return (String) value;
         else return "";
     }
 
-    Function funValue ( ) {
-        if (value instanceof Function) 
-            return (Function) value; 
+    // Function 값 반환
+    Function funValue() {
+        if (value instanceof Function)
+            return (Function) value;
         else return null;
     }
 
-    Value[] arrValue ( ) {
-        if (value instanceof Value[]) 
-            return (Value[]) value; 
+    // Array 값 반환
+    Value[] arrValue() {
+        if (value instanceof Value[])
+            return (Value[]) value;
         else return null;
     }
 
-    Type type ( ) { return type; }
+    Type type() { return type; }
 
-    public String toString( ) {
-        //if (undef) return "undef";
-        if (type == Type.INT) return "" + intValue(); 
+    @Override
+    public String toString() {
+        if (type == Type.INT) return "" + intValue();
         if (type == Type.BOOL) return "" + boolValue();
-	    if (type == Type.STRING) return "" + stringValue();
+        if (type == Type.STRING) return "" + stringValue();
         if (type == Type.FUN) return "" + funValue();
         if (type == Type.ARRAY) return "" + arrValue();
         return "undef";
@@ -329,13 +436,20 @@ class Value extends Expr {
 }
 
 class Binary extends Expr {
-// Binary = Operator op; Expr expr1; Expr expr2;
+    // Binary = Operator op; Expr expr1; Expr expr2;
     Operator op;
     Expr expr1, expr2;
 
     Binary (Operator o, Expr e1, Expr e2) {
         op = o; expr1 = e1; expr2 = e2;
     } // binary
+
+    public void display(int level) {
+        Indent.display(level, "Binary");
+        Indent.display(level + 1, "Operator: " + op.toString());
+        expr1.display(level+1);
+        expr2.display(level+1);
+    }
 }
 
 class Unary extends Expr {
@@ -347,21 +461,20 @@ class Unary extends Expr {
         op = o; //(o.val == "-") ? new Operator("neg"): o; 
         expr = e;
     } // unary
-
 }
 
 class Operator {
     String val;
-    
-    Operator (String s) { 
-	val = s; 
+
+    Operator (String s) {
+        val = s;
     }
 
-    public String toString( ) { 
-	return val; 
+    public String toString( ) {
+        return val;
     }
 
-    public boolean equals(Object obj) { 
-	return val.equals(obj); 
+    public boolean equals(Object obj) {
+        return val.equals(obj);
     }
 }
