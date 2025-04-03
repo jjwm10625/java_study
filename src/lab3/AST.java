@@ -1,7 +1,7 @@
-package lab2;//
-// AST.java
+package lab3;// AST.java
 // AST for S
-import java.util.*;
+
+import java.util.ArrayList;
 
 class Indent {
     public static void display(int level, String s) {
@@ -155,7 +155,6 @@ class Stmts extends Stmt {
 class Assignment extends Stmt {
     // Assignment = Identifier id; Expr expr
     Identifier id;
-    //Array ar = null;
     Expr expr;
 
     Assignment (Identifier t, Expr e) {
@@ -176,16 +175,23 @@ class If extends Stmt {
     Stmt stmt1, stmt2;
 
     If (Expr t, Stmt tp) {
-        expr = t; stmt1 = tp; stmt2 = new Empty( );
+        expr = t; stmt1 = tp; stmt2 = new Empty();
     }
 
     If (Expr t, Stmt tp, Stmt ep) {
         expr = t; stmt1 = tp; stmt2 = ep;
     }
+
+    @Override
+    public void display(int level) {
+        Indent.display(level, "If");
+        expr.display(level + 1);
+        stmt1.display(level + 1);
+        stmt2.display(level + 1);
+    }
 }
 
 class While extends Stmt {
-    // While = Expr expr; Stmt stmt;
     Expr expr;
     Stmt stmt;
 
@@ -202,7 +208,6 @@ class While extends Stmt {
 }
 
 class Let extends Stmt {
-    // Let = Decls decls; Functions funs; Stmts stmts;
     Decls decls;
     Functions funs;
     Stmts stmts;
@@ -231,9 +236,7 @@ class Let extends Stmt {
     }
 }
 
-
 class Read extends Stmt {
-    // Read = Identifier id
     Identifier id;
 
     Read (Identifier v) {
@@ -257,7 +260,7 @@ class Print extends Stmt {
     @Override
     public void display(int level) {
         Indent.display(level, "Print");
-        expr.display(level + 1);  // 표현식 출력
+        expr.display(level + 1);
     }
 }
 
@@ -273,13 +276,12 @@ class Return extends Stmt {
     @Override
     public void display(int level) {
         Indent.display(level, "Return");
-        fid.display(level + 1); // 함수 이름 출력
-        expr.display(level + 1); // 반환할 표현식 출력
+        fid.display(level + 1);
+        expr.display(level + 1);
     }
 }
 
 class Try extends Stmt {
-    // Try = Identifier id; Stmt stmt1; Stmt stmt2;
     Identifier eid;
     Stmt stmt1;
     Stmt stmt2;
@@ -300,11 +302,9 @@ class Raise extends Stmt {
 }
 
 class Exprs extends ArrayList<Expr> {
-    // Exprs = Expr*
 }
 
 abstract class Expr extends Stmt {
-    // Expr = Identifier | Value | Binary | Unary | Call
 }
 
 class Call extends Expr {
@@ -318,7 +318,6 @@ class Call extends Expr {
 }
 
 class Identifier extends Expr {
-    // Identifier = String id
     private String id;
 
     Identifier(String s) {
@@ -341,7 +340,6 @@ class Identifier extends Expr {
 }
 
 class Array extends Expr {
-    // Array = Identifier id; Expr expr
     Identifier id;
     Expr expr = null;
 
@@ -356,7 +354,6 @@ class Array extends Expr {
 }
 
 class Value extends Expr {
-    // Value = int | bool | string | array | function
     protected boolean undef = true;
     Object value = null;
     Type type;
@@ -369,7 +366,6 @@ class Value extends Expr {
         undef = false;
     }
 
-    // 객체를 기반으로 초기화
     Value(Object v) {
         if (v instanceof Integer) type = Type.INT;
         if (v instanceof Boolean) type = Type.BOOL;
@@ -379,44 +375,37 @@ class Value extends Expr {
         value = v; undef = false;
     }
 
-    // 값 반환
     Object value() { return value; }
 
-    // 값 출력 메소드
     @Override
     public void display(int level) {
         Indent.display(level, "Value: " + value);
     }
 
-    // int 값 반환
     int intValue() {
         if (value instanceof Integer)
             return ((Integer) value).intValue();
         else return 0;
     }
 
-    // boolean 값 반환
     boolean boolValue() {
         if (value instanceof Boolean)
             return ((Boolean) value).booleanValue();
         else return false;
     }
 
-    // String 값 반환
     String stringValue() {
         if (value instanceof String)
             return (String) value;
         else return "";
     }
 
-    // Function 값 반환
     Function funValue() {
         if (value instanceof Function)
             return (Function) value;
         else return null;
     }
 
-    // Array 값 반환
     Value[] arrValue() {
         if (value instanceof Value[])
             return (Value[]) value;
@@ -437,13 +426,12 @@ class Value extends Expr {
 }
 
 class Binary extends Expr {
-    // Binary = Operator op; Expr expr1; Expr expr2;
     Operator op;
     Expr expr1, expr2;
 
     Binary (Operator o, Expr e1, Expr e2) {
         op = o; expr1 = e1; expr2 = e2;
-    } // binary
+    }
 
     public void display(int level) {
         Indent.display(level, "Binary");
@@ -454,14 +442,13 @@ class Binary extends Expr {
 }
 
 class Unary extends Expr {
-    // Unary = Operator op; Expr expr
     Operator op;
     Expr expr;
 
     Unary (Operator o, Expr e) {
-        op = o; //(o.val == "-") ? new Operator("neg"): o; 
+        op = o;
         expr = e;
-    } // unary
+    }
 }
 
 class Operator {
@@ -477,5 +464,49 @@ class Operator {
 
     public boolean equals(Object obj) {
         return val.equals(obj);
+    }
+}
+
+class DoWhile extends Stmt {
+    Stmt stmt;
+    Expr expr;
+
+    DoWhile(Stmt stmt, Expr expr) {
+        this.stmt = stmt;
+        this.expr = expr;
+    }
+
+    @Override
+    public void display(int level) {
+        Indent.display(level, "DoWhile");
+        stmt.display(level + 1);
+        expr.display(level + 1);
+    }
+}
+
+class For extends Stmt {
+    Decl decl;
+    Expr condition;
+    Assignment update;
+    Stmt stmt;
+
+    For(Decl decl, Expr condition, Assignment update, Stmt stmt) {
+        this.decl = decl;
+        this.condition = condition;
+        this.update = update;
+        this.stmt = stmt;
+    }
+
+    @Override
+    public void display(int level) {
+        Indent.display(level, "For");
+        Indent.display(level + 1, "Initialization");
+        decl.display(level + 2);
+        Indent.display(level + 1, "Condition");
+        condition.display(level + 2);
+        Indent.display(level + 1, "Update");
+        update.display(level + 2);
+        Indent.display(level + 1, "Body");
+        stmt.display(level + 2);
     }
 }
