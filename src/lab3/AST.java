@@ -147,7 +147,7 @@ class Stmts extends Stmt {
     @Override
     public void display(int level) {
         for (Stmt stmt : stmts) {
-            stmt.display(level);  // 각 문장 출력
+            stmt.display(level);
         }
     }
 }

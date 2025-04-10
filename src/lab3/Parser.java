@@ -166,7 +166,6 @@ public class Parser {
     }
 
     private Stmt doWhileStmt() {
-        // do <stmt> while (<expr>);
         match(Token.DO);
         Stmt body = stmt();
         match(Token.WHILE);
@@ -174,7 +173,13 @@ public class Parser {
         Expr condition = expr();
         match(Token.RPAREN);
         match(Token.SEMICOLON);
-        return new DoWhile(body, condition);
+
+        Stmts stmts = new Stmts();
+
+        stmts.stmts.add(body);
+        stmts.stmts.add(new While(condition, body));
+
+        return stmts;
     }
 
     private Stmt forStmt() {
@@ -200,8 +205,18 @@ public class Parser {
         match(Token.RPAREN);
         Stmt body = stmt();
 
-        return new For(decl, condition, update, body);
+        Stmts whileBody = new Stmts();
+        whileBody.stmts.add(body);
+        whileBody.stmts.add(update);
+
+        While whileStmt = new While(condition, whileBody);
+
+        Stmts stmts = new Stmts();
+        stmts.stmts.add(whileStmt);
+
+        return new Let(new Decls(decl), stmts);
     }
+
 
     private Stmts stmts() {
         // <block> -> {<stmt>}
@@ -214,12 +229,12 @@ public class Parser {
     private Let letStmt() {
         // <letStmt> -> let <decls> in <block> end
         match(Token.LET);
-        Decls ds = decls();  // 선언 처리 (Decls)
-        match(Token.IN);     // in 구문 처리
-        Stmts ss = stmts();  // 블록 처리 (Stmts)
-        match(Token.END);    // end 구문 처리
-        match(Token.SEMICOLON);  // 세미콜론 처리
-        return new Let(ds, ss);  // Let 객체 생성
+        Decls ds = decls();
+        match(Token.IN);
+        Stmts ss = stmts();
+        match(Token.END);
+        match(Token.SEMICOLON);
+        return new Let(ds, ss);
     }
 
 
