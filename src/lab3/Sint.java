@@ -46,6 +46,9 @@ public class Sint {
         if (s instanceof Return) return Eval((Return)s, state);
         if (s instanceof DoWhile) return Eval((DoWhile)s, state);
         if (s instanceof For) return Eval((For)s, state);
+
+        if (s instanceof Expr) return state;
+
         throw new IllegalArgumentException("no statement");
     }
 
@@ -135,13 +138,14 @@ public class Sint {
             int outerIdx = state.lookup(d.id);
             int innerIdx = s.lookup(d.id);
             if (outerIdx != -1 && innerIdx != -1) {
-                Pair v = s.get(innerIdx);
-                state.set(outerIdx, v);
+                Value v = s.get(innerIdx).val;
+                state.set(d.id, v);
             }
         }
 
         return free(l.decls, s);
     }
+
 
 
     State allocate(Decls ds, State state) {
@@ -167,23 +171,60 @@ public class Sint {
     }
 
     Value binaryOperation(Operator op, Value v1, Value v2) {
-        check(!v1.undef && !v2.undef,"reference to undef value");
+        check(!v1.undef && !v2.undef, "reference to undef value");
         switch (op.val) {
-            case "+": return new Value(v1.intValue() + v2.intValue());
-            case "-": return new Value(v1.intValue() - v2.intValue());
-            case "*": return new Value(v1.intValue() * v2.intValue());
-            case "/": return new Value(v1.intValue() / v2.intValue());
+            case "+":
+                return new Value(v1.intValue() + v2.intValue());
+            case "-":
+                return new Value(v1.intValue() - v2.intValue());
+            case "*":
+                return new Value(v1.intValue() * v2.intValue());
+            case "/":
+                return new Value(v1.intValue() / v2.intValue());
 
-            case ">": return new Value(v1.intValue() > v2.intValue());
-            case "<": return new Value(v1.intValue() < v2.intValue());
-            case ">=": return new Value(v1.intValue() >= v2.intValue());
-            case "<=": return new Value(v1.intValue() <= v2.intValue());
-            case "==": return new Value(v1.intValue() == v2.intValue());
-            case "!=": return new Value(v1.intValue() != v2.intValue());
+            case ">":
+                if (v1.type == Type.STRING && v2.type == Type.STRING)
+                    return new Value(v1.stringValue().compareTo(v2.stringValue()) > 0);
+                else
+                    return new Value(v1.intValue() > v2.intValue());
+            case "<":
+                if (v1.type == Type.STRING && v2.type == Type.STRING)
+                    return new Value(v1.stringValue().compareTo(v2.stringValue()) < 0);
+                else
+                    return new Value(v1.intValue() < v2.intValue());
+            case ">=":
+                if (v1.type == Type.STRING && v2.type == Type.STRING)
+                    return new Value(v1.stringValue().compareTo(v2.stringValue()) >= 0);
+                else
+                    return new Value(v1.intValue() >= v2.intValue());
+            case "<=":
+                if (v1.type == Type.STRING && v2.type == Type.STRING)
+                    return new Value(v1.stringValue().compareTo(v2.stringValue()) <= 0);
+                else
+                    return new Value(v1.intValue() <= v2.intValue());
 
-            default: throw new IllegalArgumentException("no operation");
+            case "==":
+                if (v1.type == Type.STRING && v2.type == Type.STRING)
+                    return new Value(v1.stringValue().equals(v2.stringValue()));
+                else
+                    return new Value(v1.intValue() == v2.intValue());
+            case "!=":
+                if (v1.type == Type.STRING && v2.type == Type.STRING)
+                    return new Value(!v1.stringValue().equals(v2.stringValue()));
+                else
+                    return new Value(v1.intValue() != v2.intValue());
+
+                // 🔥 추가된 논리 연산
+            case "&":
+                return new Value(v1.boolValue() && v2.boolValue());
+            case "|":
+                return new Value(v1.boolValue() || v2.boolValue());
+
+            default:
+                throw new IllegalArgumentException("no operation");
         }
     }
+
 
 
     Value unaryOperation(Operator op, Value v) {
@@ -206,7 +247,11 @@ public class Sint {
 
         if (e instanceof Identifier) {
             Identifier v = (Identifier) e;
-            return (Value)(state.get(v));
+            Value value = (Value)(state.get(v));
+            if (value == null) {
+                throw new IllegalArgumentException("undefined variable: " + v);
+            }
+            return value;
         }
 
         if (e instanceof Binary) {
@@ -215,18 +260,23 @@ public class Sint {
             Value v2 = V(b.expr2, state);
             return binaryOperation(b.op, v1, v2);
         }
+
         if (e instanceof Unary) {
             Unary u = (Unary) e;
             Value v = V(u.expr, state);
             return unaryOperation(u.op, v);
         }
+
         if (e instanceof Call)
             return V((Call)e, state);
+
         throw new IllegalArgumentException("no operation");
     }
 
-    State Eval(Call c, State state) {
-        return state;  // void function call
+
+    State Eval(Expr e, State state) {
+        V(e, state);
+        return state;
     }
 
     Value V(Call c, State state) {
